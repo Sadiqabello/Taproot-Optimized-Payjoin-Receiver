@@ -1,0 +1,41 @@
+[package]
+name = "pj-receive"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Taproot-optimized Payjoin v2 receiver with privacy-aware coin selection"
+license = "MIT"
+
+[[bin]]
+name = "pj-receive"
+path = "src/main.rs"
+
+[dependencies]
+# Bitcoin
+bitcoin = { version = "0.32.8", features = ["serde", "rand-std"] }
+bitcoincore-rpc = "0.19.0"
+payjoin = { version = "0.21.0", features = ["v2", "io", "receive"] }
+
+# Async
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1"
+
+# URL handling
+url = { version = "2", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3"
