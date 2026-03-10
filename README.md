@@ -1,8 +1,10 @@
 # pj-receive
 
-A Taproot-optimized Payjoin v2 (BIP 77) receiver with a privacy-aware coin selection engine.
+A Taproot-optimized Payjoin v2 (BIP 77) receiver with a privacy-aware coin selection engine and interactive terminal UI.
 
 `pj-receive` acts as a standalone BIP 77 receiver that connects to a local Bitcoin Core node, manages receiver-side UTXO selection with Taproot optimization, and communicates asynchronously through the Payjoin Directory infrastructure. Its core contribution is a multi-heuristic scoring algorithm that balances privacy, fee efficiency, and UTXO consolidation when choosing which receiver inputs to contribute to a Payjoin transaction.
+
+The application offers two interfaces: a headless **CLI** for scripting and automation, and an interactive **TUI (Terminal UI)** for hands-on use with real-time wallet monitoring, guided session creation, and live coin selection previews.
 
 ## Table of Contents
 
@@ -12,6 +14,8 @@ A Taproot-optimized Payjoin v2 (BIP 77) receiver with a privacy-aware coin selec
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+  - [Terminal UI (TUI)](#terminal-ui-tui)
+  - [Command-Line Interface (CLI)](#command-line-interface-cli)
 - [Coin Selection Engine](#coin-selection-engine)
 - [Project Structure](#project-structure)
 - [Development](#development)
@@ -41,8 +45,8 @@ The [Payjoin Dev Kit (PDK)](https://github.com/payjoin/rust-payjoin) provides th
                          │              pj-receive                  │
                          │                                          │
                          │  ┌──────────────────────────────────┐    │
-                         │  │       CLI Interface (clap)       │    │
-                         │  │  init / receive / status / config│    │
+                         │  │     User Interface               │    │
+                         │  │  CLI (clap) / TUI (ratatui)      │    │
                          │  └───────────────┬──────────────────┘    │
                          │                  │                       │
                          │  ┌───────────────▼──────────────────┐    │
@@ -184,7 +188,74 @@ All global options (`--rpc-host`, `--rpc-port`, etc.) can be passed to any comma
 
 ## Usage
 
-### Receive a Payjoin Payment
+### Terminal UI (TUI)
+
+The recommended way to use `pj-receive` interactively. Launch with:
+
+```bash
+pj-receive tui
+```
+
+The TUI provides a full-screen terminal interface with four screens:
+
+```
+┌─ pj-receive ──────────────────────────────────────────────────────────┐
+│  Connected │ Network: signet │ Block: 8501 │ UTXOs: 3 │ Balance: ... │
+├───────────────────────────────────────────────────────────────────────┤
+│ [1] Dashboard │ [2] New Session │ [3] Sessions │ [?] Help            │
+├─ Wallet Summary ──────────────────────────────────────────────────────┤
+│  Taproot (P2TR): 3    SegWit (P2WPKH): 0    Fee Rate: 1.0 sat/vB   │
+├─ Wallet UTXOs ────────────────────────────────────────────────────────┤
+│  #  Type   Amount (sats)   Confs   Address                           │
+│  1  P2TR   1,000,000       1       tb1pqtw2...ftxk4fs               │
+│  2  P2TR     500,000       1       tb1pw87c...a97347                 │
+│  3  P2TR     250,000       1       tb1peqq3...cenksy                 │
+├─ Log ─────────────────────────────────────────────────────────────────┤
+│  12:28:44 INFO Connected to Bitcoin Core (signet), block 8501        │
+│  12:28:44 INFO Loaded 3 UTXOs                                        │
+└───────────────────────────────────────────────────────────────────────┘
+ q Quit  1-3 Navigate  ? Help  r Refresh
+```
+
+#### TUI Screens
+
+**[1] Dashboard** — Main overview showing connection status, wallet UTXOs with script types, balance, fee rate, and a live activity log. Data auto-refreshes every 10 seconds.
+
+**[2] New Session** — Interactive form to create a Payjoin receive session. Fill in the amount, choose a strategy, and press Enter to start. The coin selection preview updates live as you type the amount, showing which UTXOs will be selected and their scores.
+
+**[3] Sessions** — Lists all active and completed Payjoin sessions with their status (Pending, Proposal Sent, Completed, Expired, Failed).
+
+**[?] Help** — Keyboard shortcuts reference and coin selection strategy explanations.
+
+#### TUI Keyboard Shortcuts
+
+| Key | Context | Action |
+|-----|---------|--------|
+| `1` `2` `3` | Any screen | Switch between Dashboard, New Session, Sessions |
+| `?` | Any screen | Toggle help screen |
+| `r` | Any screen | Refresh wallet data from Bitcoin Core |
+| `q` | Normal mode | Quit the application |
+| `Ctrl+C` | Any | Force quit |
+| `Tab` / `Down` | New Session form | Move to next field |
+| `Shift+Tab` / `Up` | New Session form | Move to previous field |
+| `Enter` | New Session form | Start the receive session |
+| `Esc` | New Session / Help | Go back to Dashboard |
+
+#### TUI New Session Form Fields
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| Amount (sats) | required | Payment amount the sender will pay |
+| Strategy | `balanced` | Coin selection profile (see [Strategy Profiles](#strategy-profiles)) |
+| Max Inputs | `1` | Maximum number of receiver UTXOs to contribute |
+| Expiry (min) | `60` | How long the session stays active |
+| Label | optional | Human-readable note for your records |
+
+### Command-Line Interface (CLI)
+
+The headless CLI is available for scripting, automation, and non-interactive use. All TUI functionality is also accessible via CLI commands.
+
+#### Receive a Payjoin Payment
 
 ```bash
 pj-receive receive \
@@ -211,21 +282,25 @@ This will:
 | `--directory <URL>` | `https://payjo.in` | Payjoin Directory URL |
 | `--ohttp-relay <URL>` | `https://pj.bobspacebkk.com` | OHTTP relay URL |
 
-### Check Active Sessions
+#### Other CLI Commands
 
 ```bash
+# Check active sessions
 pj-receive status
-```
 
-### View Completed Transactions
-
-```bash
+# View completed transactions
 pj-receive history
+
+# View current configuration
+pj-receive config --show
+
+# Launch the interactive TUI
+pj-receive tui
 ```
 
-### Verbosity
+#### Verbosity
 
-Add `-v`, `-vv`, or `-vvv` to any command for increasing log detail:
+Add `-v`, `-vv`, or `-vvv` to any CLI command for increasing log detail:
 
 ```bash
 pj-receive -vv receive --amount 100000
@@ -277,7 +352,7 @@ The engine also attempts **UIH (Unnecessary Input Heuristic) avoidance** via `tr
 pj-receive/
 ├── Cargo.toml
 ├── src/
-│   ├── main.rs                     # Entry point, CLI dispatch
+│   ├── main.rs                     # Entry point, dispatches to CLI or TUI
 │   ├── cli.rs                      # Clap command/argument definitions
 │   ├── config.rs                   # Configuration loading, saving, overrides
 │   ├── rpc.rs                      # Bitcoin Core RPC wrapper
@@ -285,12 +360,17 @@ pj-receive/
 │   ├── session.rs                  # Session state, replay protection
 │   ├── persistence.rs              # JSON-based session storage
 │   ├── logging.rs                  # Structured logging (tracing)
-│   └── coin_selection/             # Core coin selection engine
-│       ├── mod.rs                  # Public API: select_inputs()
-│       ├── scorer.rs               # Multi-heuristic UTXO scoring
-│       ├── script_types.rs         # Script-type detection and weight calculation
-│       ├── strategies.rs           # Strategy profiles and weight configurations
-│       └── decorrelation.rs        # Amount decorrelation analysis
+│   ├── coin_selection/             # Core coin selection engine
+│   │   ├── mod.rs                  # Public API: select_inputs()
+│   │   ├── scorer.rs               # Multi-heuristic UTXO scoring
+│   │   ├── script_types.rs         # Script-type detection and weight calculation
+│   │   ├── strategies.rs           # Strategy profiles and weight configurations
+│   │   └── decorrelation.rs        # Amount decorrelation analysis
+│   └── tui/                        # Interactive terminal UI
+│       ├── mod.rs                  # Terminal setup, main event loop
+│       ├── app.rs                  # Application state, wallet refresh, session logic
+│       ├── ui.rs                   # Screen layouts and widget rendering
+│       └── event.rs                # Keyboard input and tick event polling
 └── tests/
     ├── unit/                       # Additional unit tests
     └── integration/                # End-to-end tests on regtest
@@ -303,6 +383,7 @@ pj-receive/
 | `protocol.rs` | Orchestrates the full BIP 77 receiver flow — session init, OHTTP communication, PSBT validation, proposal construction, signing, and response. |
 | `coin_selection/` | Self-contained scoring engine. Designed to be reusable and suitable for upstream contribution to PDK. The public API is a single function: `select_inputs()`. |
 | `rpc.rs` | Thin wrapper around `bitcoincore-rpc`. Handles connection, address generation (Bech32m), UTXO listing, PSBT signing, fee estimation, and script ownership checks. |
+| `tui/` | Interactive terminal UI built with `ratatui` and `crossterm`. Provides a 4-screen interface (Dashboard, New Session, Sessions, Help) with live wallet monitoring and guided session creation. |
 | `session.rs` | Manages session lifecycle and seen-inputs tracking for replay protection. |
 | `persistence.rs` | Serializes session state to JSON files so sessions survive process restarts. |
 
@@ -344,6 +425,8 @@ cargo audit
 | `tokio` | 1.x | Async runtime for polling and network I/O |
 | `reqwest` | 0.12 | HTTP client for OHTTP relay communication |
 | `clap` | 4.x | CLI argument parsing with derive macros |
+| `ratatui` | 0.29 | Terminal UI framework (widgets, layout, rendering) |
+| `crossterm` | 0.28 | Cross-platform terminal manipulation (raw mode, events) |
 | `serde` / `serde_json` | 1.x | Configuration and session serialization |
 | `tracing` | 0.1 | Structured logging |
 | `anyhow` | 1.x | Error handling |
@@ -412,8 +495,12 @@ To run a full Payjoin flow locally:
      --wallet receiver --network regtest
    ```
 
-4. **Start the receiver:**
+4. **Start the receiver (TUI or CLI):**
    ```bash
+   # Interactive TUI
+   cargo run -- tui
+
+   # Or headless CLI
    cargo run -- -vv receive --amount 50000 --strategy balanced
    ```
 
@@ -451,6 +538,10 @@ Contributions are welcome. This project is part of the [BOSS (Bitcoin Open-Sourc
    ```bash
    cargo build && cargo test
    ```
+5. **Launch the TUI** to explore the application:
+   ```bash
+   cargo run -- tui
+   ```
 
 ### Areas for Contribution
 
@@ -462,7 +553,10 @@ Contributions are welcome. This project is part of the [BOSS (Bitcoin Open-Sourc
 | **Privacy analysis** | Validate coin selection against known chain analysis heuristics | Hard |
 | **Output substitution** | Implement receiver output substitution for enhanced privacy | Medium |
 | **Transaction monitoring** | Watch for confirmation after proposal is sent | Easy |
-| **QR code output** | Render BIP 21 URIs as QR codes in the terminal | Easy |
+| **TUI: QR code display** | Render BIP 21 URIs as QR codes in the New Session screen | Easy |
+| **TUI: Session detail view** | Expand a session row to show full URI, PSBT details, and timeline | Medium |
+| **TUI: UTXO selection highlighting** | Highlight which UTXOs are selected for the current session | Easy |
+| **TUI: Custom themes** | Support user-configurable color themes | Easy |
 | **Error recovery** | Graceful handling of partial failures, session resume after crash | Medium |
 
 ### Code Style and Standards
@@ -472,6 +566,7 @@ Contributions are welcome. This project is part of the [BOSS (Bitcoin Open-Sourc
 - **Test** all new functionality — run `cargo test` and ensure all tests pass
 - Follow the existing module structure and naming conventions
 - Keep the coin selection engine (`src/coin_selection/`) decoupled from protocol logic — it should remain independently testable and suitable for upstream contribution
+- Keep TUI rendering (`src/tui/ui.rs`) separate from application state (`src/tui/app.rs`) — the UI should be a pure function of app state
 - Use `anyhow::Result` for application-level errors and typed errors at module boundaries
 - Use `tracing` macros (`tracing::info!`, `tracing::debug!`) for logging, not `println!` (except for user-facing CLI output)
 
@@ -519,3 +614,4 @@ This project is licensed under the [MIT License](LICENSE).
 - [Payjoin Dev Kit](https://github.com/payjoin/rust-payjoin) — protocol implementation
 - [Btrust Builders](https://www.btrust.tech/) and [Chaincode Labs](https://chaincode.com/) — BOSS Challenge program
 - [Dan Gould](https://github.com/DanGould) — PDK maintainer and Payjoin protocol design
+- [ratatui](https://github.com/ratatui/ratatui) — terminal UI framework

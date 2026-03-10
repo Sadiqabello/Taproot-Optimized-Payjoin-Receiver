@@ -29,6 +29,8 @@ pub enum Command {
     History(GlobalArgs),
     /// View or modify configuration
     Config(ConfigArgs),
+    /// Launch interactive terminal UI
+    Tui(GlobalArgs),
 }
 
 #[derive(Parser, Clone)]
