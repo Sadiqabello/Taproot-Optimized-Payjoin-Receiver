@@ -6,6 +6,7 @@ mod persistence;
 mod protocol;
 mod rpc;
 mod session;
+mod tui;
 
 use anyhow::Result;
 use clap::Parser;
@@ -15,8 +16,21 @@ use cli::{Cli, Command};
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    logging::init(cli.verbose)?;
+    match cli.command {
+        Command::Tui(args) => {
+            let cfg = config::Config::load_with_overrides(&args)?;
+            tui::run(cfg).await?;
+        }
+        _ => {
+            logging::init(cli.verbose)?;
+            run_cli(cli).await?;
+        }
+    }
 
+    Ok(())
+}
+
+async fn run_cli(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Init(args) => {
             let cfg = config::Config::initialize(args)?;
@@ -47,6 +61,7 @@ async fn main() -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&cfg)?);
             }
         }
+        Command::Tui(_) => unreachable!(),
     }
 
     Ok(())

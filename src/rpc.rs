@@ -89,7 +89,7 @@ impl BitcoinRpc {
     pub fn list_unspent(&self) -> Result<Vec<WalletUtxo>> {
         let utxos = self
             .client
-            .list_unspent(Some(1), None, None, None, None)
+            .list_unspent(Some(0), None, None, None, None)
             .context("Failed to list unspent outputs")?;
 
         Ok(utxos.into_iter().map(WalletUtxo::from).collect())
